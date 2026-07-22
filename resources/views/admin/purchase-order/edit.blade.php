@@ -102,13 +102,27 @@
                             @endif
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="detailProdukBody">
                         @foreach($purchaseOrder->detailPo as $key => $detail)
                             <tr>
                                 <td>{{ $key + 1 }}</td>
-                                <td>{{ $detail->produk->kode_produk ?? '-' }}</td>
-                                <td>{{ $detail->produk->nama_produk ?? '-' }}</td>
-                                <td>{{ $detail->qty_po }}</td>
+                                <td>
+                                    {{ $detail->produk->kode_produk ?? '-' }}
+                                    {{-- ✅ HIDDEN INPUT UNTUK ID DETAIL --}}
+                                    <input type="hidden" name="detail_id[]" value="{{ $detail->id }}">
+                                </td>
+                                <td>
+                                    <select class="form-select" name="produk_id[]" required>
+                                        @foreach($produks as $produk)
+                                            <option value="{{ $produk->id }}" {{ $detail->produk_id == $produk->id ? 'selected' : '' }}>
+                                                {{ $produk->kode_produk }} - {{ $produk->nama_produk }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control" name="qty_po[]" value="{{ $detail->qty_po }}" min="1" required>
+                                </td>
                                 <td>{{ $detail->qty_selesai }}</td>
                                 @if($purchaseOrder->status_po != 'Selesai')
                                     <td>
@@ -149,6 +163,32 @@
                 
                 {{-- Container untuk detail baru --}}
                 <div id="detailProdukContainer" class="mt-3"></div>
+                
+                {{-- TEMPLATE UNTUK PRODUK BARU (Tersembunyi) --}}
+                <div id="templateProduk" style="display:none;">
+                    <div class="row g-2 mb-2 detail-produk align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Produk <span class="text-danger">*</span></label>
+                            <select class="form-select select2" name="produk_id[]" required>
+                                <option value="">Pilih Produk</option>
+                                @foreach($produks as $produk)
+                                    <option value="{{ $produk->id }}">{{ $produk->kode_produk }} - {{ $produk->nama_produk }}</option>
+                                @endforeach
+                            </select>
+                            {{-- ✅ HIDDEN INPUT KOSONG UNTUK PRODUK BARU --}}
+                            <input type="hidden" name="detail_id[]" value="">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Qty PO <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="qty_po[]" min="1" placeholder="Jumlah" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-danger remove-detail">
+                                <i class="bi bi-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                </div>
             @endif
 
             <hr>
@@ -213,43 +253,75 @@
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('detailProdukContainer');
     const addButton = document.getElementById('addDetailProduk');
-    let detailCount = 0;
+    const template = document.getElementById('templateProduk');
     
-    if (addButton) {
+    if (addButton && template) {
         addButton.addEventListener('click', function() {
-            const newDetail = `
-                <div class="row g-2 mb-2 detail-produk align-items-end">
-                    <div class="col-md-5">
-                        <label class="form-label">Produk <span class="text-danger">*</span></label>
-                        <select class="form-select select2 produk-select" name="produk_id[]" required>
-                            <option value="">Pilih Produk</option>
-                            @foreach($produks as $produk)
-                                <option value="{{ $produk->id }}">{{ $produk->kode_produk }} - {{ $produk->nama_produk }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Qty PO <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control qty-po" name="qty_po[]" min="1" placeholder="Jumlah" required>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="button" class="btn btn-danger remove-detail">
-                            <i class="bi bi-trash"></i> Hapus
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newDetail);
-            detailCount++;
+            // Clone template
+            const newDetail = template.cloneNode(true);
+            newDetail.style.display = 'block';
+            newDetail.id = '';  // Hapus id agar tidak duplikat
+            
+            // Reset nilai input
+            newDetail.querySelectorAll('input, select').forEach(function(el) {
+                if (el.tagName === 'SELECT') {
+                    el.selectedIndex = 0;
+                } else if (el.type === 'number') {
+                    el.value = '';
+                } else if (el.type === 'hidden') {
+                    el.value = '';  // Reset hidden input
+                } else {
+                    el.value = '';
+                }
+            });
+            
+            // Tampilkan tombol hapus
+            const removeBtn = newDetail.querySelector('.remove-detail');
+            if (removeBtn) removeBtn.style.display = 'inline-block';
+            
+            // Tambahkan ke container
+            container.appendChild(newDetail);
+            
+            // Inisialisasi Select2 untuk baris baru
+            $(newDetail).find('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Cari produk...',
+                allowClear: true,
+                dropdownParent: $('body')
+            });
+            
+            updateRemoveButtons();
         });
     }
     
-    // Event delegation untuk hapus detail baru
+    // Event delegation untuk hapus detail (termasuk yang sudah ada)
     container.addEventListener('click', function(e) {
         if (e.target.closest('.remove-detail')) {
-            e.target.closest('.detail-produk').remove();
+            const detail = e.target.closest('.detail-produk');
+            if (detail) {
+                detail.remove();
+                updateRemoveButtons();
+            }
         }
     });
+    
+    function updateRemoveButtons() {
+        const details = container.querySelectorAll('.detail-produk');
+        details.forEach(function(detail, index) {
+            const removeBtn = detail.querySelector('.remove-detail');
+            if (removeBtn) {
+                if (details.length > 1) {
+                    removeBtn.style.display = 'inline-block';
+                } else {
+                    removeBtn.style.display = 'none';
+                }
+            }
+        });
+    }
+    
+    // Inisialisasi tombol hapus
+    updateRemoveButtons();
 });
 </script>
 @endpush

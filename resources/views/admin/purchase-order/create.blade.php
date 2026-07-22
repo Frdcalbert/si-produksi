@@ -116,10 +116,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const firstDetail = container.querySelector('.detail-produk');
         const newDetail = firstDetail.cloneNode(true);
         
-        newDetail.querySelectorAll('input, select').forEach(el => {
-            if (el.type === 'number') el.value = '';
-            else if (el.tagName === 'SELECT') el.selectedIndex = 0;
-            else el.value = '';
+        // ✅ RESET NILAI
+        newDetail.querySelectorAll('input, select').forEach(function(el) {
+            if (el.tagName === 'SELECT') {
+                el.selectedIndex = 0;
+            } else if (el.type === 'number') {
+                el.value = '';
+            } else {
+                el.value = '';
+            }
         });
         
         const removeBtn = newDetail.querySelector('.remove-detail');
@@ -135,13 +140,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (container.children.length > 1) {
                 detail.remove();
                 updateRemoveButtons();
+            } else {
+                alert('Minimal harus ada 1 produk!');
             }
         }
     });
     
     function updateRemoveButtons() {
         const details = container.querySelectorAll('.detail-produk');
-        details.forEach((detail, index) => {
+        details.forEach(function(detail, index) {
             const removeBtn = detail.querySelector('.remove-detail');
             if (details.length > 1 && index > 0) {
                 removeBtn.style.display = 'inline-block';
@@ -150,6 +157,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
     updateRemoveButtons();
 });
 </script>
