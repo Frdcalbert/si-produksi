@@ -101,7 +101,6 @@ class PurchaseOrderController extends Controller
         'no_po' => 'required|unique:purchase_order,no_po,' . $purchaseOrder->id,
         'tanggal_po' => 'required|date',
         'deadline_po' => 'required|date|after:tanggal_po',
-        // ✅ Tambah validasi untuk detail produk
         'produk_id' => 'required|array|min:1',
         'produk_id.*' => 'exists:produk,id',
         'qty_po' => 'required|array|min:1',
@@ -112,15 +111,14 @@ class PurchaseOrderController extends Controller
         return back()->with('error', 'PO yang sudah selesai tidak dapat diubah');
     }
 
-    // ✅ Update header PO
+    // Update header PO
     $purchaseOrder->update($request->only(['project_id', 'supplier_id', 'no_po', 'tanggal_po', 'deadline_po', 'catatan']));
 
     // ✅ Update detail PO
-    // Ambil semua ID detail yang ada di form
     $existingDetailIds = $purchaseOrder->detailPo->pluck('id')->toArray();
     $submittedIds = $request->input('detail_id', []);
 
-    // Hapus detail yang tidak ada di form
+    // Hapus detail yang tidak ada di form (termasuk yang dihapus user)
     $toDelete = array_diff($existingDetailIds, $submittedIds);
     if (!empty($toDelete)) {
         DetailPo::whereIn('id', $toDelete)->delete();
@@ -148,11 +146,46 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    // ✅ Update status PO
-    $this->updateStatusPo($purchaseOrder->id);
+    // ✅ Update status PO (tanpa mengubah ke Diproses otomatis)
+    $this->updateStatusPoAfterUpdate($purchaseOrder->id);
 
     return redirect()->route('admin.purchase-order.index')
         ->with('success', 'Purchase Order berhasil diupdate');
+}
+
+/**
+ * Update status PO setelah update (tidak otomatis jadi Diproses)
+ */
+private function updateStatusPoAfterUpdate($purchaseOrderId)
+{
+    $purchaseOrder = PurchaseOrder::find($purchaseOrderId);
+    if (!$purchaseOrder) return;
+
+    $allDetails = DetailPo::where('purchase_order_id', $purchaseOrderId)->get();
+    
+    if ($allDetails->isEmpty()) {
+        $purchaseOrder->status_po = 'Menunggu';
+        $purchaseOrder->save();
+        return;
+    }
+
+    // Cek apakah semua detail sudah selesai
+    $allCompleted = $allDetails->every(function ($detail) {
+        return $detail->qty_selesai >= $detail->qty_po;
+    });
+
+    if ($allCompleted) {
+        $purchaseOrder->status_po = 'Selesai';
+    } else {
+        // ✅ JIKA STATUS MASIH MENUNGGU, TETAP MENUNGGU
+        // JIKA SUDAH DIPROSES, TETAP DIPROSES
+        if ($purchaseOrder->status_po == 'Menunggu') {
+            $purchaseOrder->status_po = 'Menunggu';
+        }
+        // status tetap seperti sebelumnya (tidak diubah otomatis)
+    }
+
+    $purchaseOrder->save();
 }
 
     public function destroy(PurchaseOrder $purchaseOrder)

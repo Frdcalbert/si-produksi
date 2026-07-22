@@ -87,11 +87,9 @@
             <hr>
             <h5 class="mb-3"><i class="bi bi-box me-2"></i>Detail Produk</h5>
             
-            {{-- Container Detail Produk --}}
             <div id="detailProdukContainer">
                 @foreach($purchaseOrder->detailPo as $key => $detail)
-                    <div class="row g-2 mb-2 detail-produk align-items-end">
-                        {{-- ✅ HIDDEN INPUT UNTUK ID DETAIL --}}
+                    <div class="row g-2 mb-2 detail-produk align-items-end" data-id="{{ $detail->id }}">
                         <input type="hidden" name="detail_id[]" value="{{ $detail->id }}">
                         
                         <div class="col-md-5">
@@ -110,7 +108,7 @@
                             <input type="number" class="form-control qty-po" name="qty_po[]" min="1" value="{{ $detail->qty_po }}" required>
                         </div>
                         <div class="col-md-3">
-                            <button type="button" class="btn btn-danger remove-detail" {{ $loop->first ? 'style="display:none;"' : '' }}>
+                            <button type="button" class="btn btn-danger remove-detail" data-id="{{ $detail->id }}">
                                 <i class="bi bi-trash"></i> Hapus
                             </button>
                         </div>
@@ -118,7 +116,6 @@
                 @endforeach
             </div>
 
-            {{-- Tombol Tambah Produk --}}
             @if($purchaseOrder->status_po != 'Selesai')
                 <div class="mt-2">
                     <button type="button" class="btn btn-success" id="addDetailProduk">
@@ -157,14 +154,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('poForm');
     const btnUpdate = document.getElementById('btnUpdate');
     
-    // Jika tidak ada tombol update (PO selesai), exit
     if (!btnUpdate) return;
     
-    // Fungsi untuk mendapatkan template detail produk baru (KOSONG)
     function getNewDetailTemplate() {
         return `
             <div class="row g-2 mb-2 detail-produk align-items-end">
-                {{-- HIDDEN INPUT KOSONG UNTUK DETAIL BARU --}}
                 <input type="hidden" name="detail_id[]" value="">
                 <div class="col-md-5">
                     <label class="form-label">Produk <span class="text-danger">*</span></label>
@@ -188,7 +182,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
     
-    // Fungsi untuk menginisialisasi Select2 di elemen baru
     function initSelect2(element) {
         $(element).find('.select2').each(function() {
             var placeholder = $(this).data('placeholder') || 'Pilih...';
@@ -202,7 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Fungsi update tombol hapus
     function updateRemoveButtons() {
         const details = container.querySelectorAll('.detail-produk');
         details.forEach((detail, index) => {
@@ -215,44 +207,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Tombol Tambah Produk (jika ada)
     if (addButton) {
         addButton.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             
-            // Buat elemen baru dari template
             const newDetail = document.createElement('div');
             newDetail.innerHTML = getNewDetailTemplate().trim();
             const newRow = newDetail.firstElementChild;
             
-            // Reset nilai input
             newRow.querySelectorAll('input').forEach(el => {
                 el.value = '';
             });
-            
-            // Reset dropdown ke opsi pertama (Pilih Produk)
             newRow.querySelectorAll('select').forEach(el => {
                 el.selectedIndex = 0;
             });
             
-            // Tambahkan ke container
             container.appendChild(newRow);
-            
-            // Inisialisasi Select2 untuk elemen baru
             initSelect2(newRow);
-            
-            // Update tombol hapus
             updateRemoveButtons();
         });
     }
     
-    // Hapus detail produk
     container.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-detail')) {
-            const detail = e.target.closest('.detail-produk');
+        const btn = e.target.closest('.remove-detail');
+        if (btn) {
+            const detail = btn.closest('.detail-produk');
             if (container.children.length > 1) {
-                // Hapus Select2 instance sebelum remove
                 $(detail).find('.select2').each(function() {
                     $(this).select2('destroy');
                 });
@@ -264,27 +245,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Tombol Update
     btnUpdate.addEventListener('click', function(e) {
-        // Hapus Select2 instance sebelum submit agar tidak mengganggu
         $('.select2').each(function() {
             $(this).select2('destroy');
         });
-        
-        // Submit form
         form.submit();
     });
     
-    // Submit form normal kalau pakai Enter
     form.addEventListener('submit', function(e) {
-        // Biarkan submit normal
         console.log('Form submitted');
     });
     
-    // Inisialisasi Select2 untuk elemen yang sudah ada
     initSelect2(container);
-    
-    // Initial update tombol hapus
     updateRemoveButtons();
 });
 </script>
