@@ -67,9 +67,7 @@
             <hr>
             <h5 class="mb-3"><i class="bi bi-box me-2"></i>Detail Produk</h5>
             
-            {{-- Container Detail Produk --}}
             <div id="detailProdukContainer">
-                {{-- Baris pertama (default) --}}
                 <div class="row g-2 mb-2 detail-produk align-items-end">
                     <div class="col-md-5">
                         <label class="form-label">Produk <span class="text-danger">*</span></label>
@@ -92,7 +90,6 @@
                 </div>
             </div>
 
-            {{-- Tombol Tambah Produk --}}
             <div class="mt-2">
                 <button type="button" class="btn btn-success" id="addDetailProduk">
                     <i class="bi bi-plus-circle"></i> Tambah Produk
@@ -114,8 +111,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('detailProdukContainer');
     const addButton = document.getElementById('addDetailProduk');
+    const form = document.getElementById('poForm');
     
-    // Fungsi untuk mendapatkan template detail produk baru (KOSONG)
+    // ========== TEMPLATE ==========
     function getNewDetailTemplate() {
         return `
             <div class="row g-2 mb-2 detail-produk align-items-end">
@@ -141,81 +139,95 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
     
-    // Fungsi untuk menginisialisasi Select2 di elemen baru
+    // ========== SELECT2 INIT ==========
     function initSelect2(element) {
         $(element).find('.select2').each(function() {
             var placeholder = $(this).data('placeholder') || 'Pilih...';
-            $(this).select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: placeholder,
-                allowClear: true,
-                dropdownParent: $('body')
-            });
+            try {
+                $(this).select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: placeholder,
+                    allowClear: true,
+                    dropdownParent: $('body')
+                });
+            } catch(e) {
+                // ignore
+            }
         });
     }
     
-    // Fungsi update tombol hapus
+    // ========== UPDATE TOMBOL HAPUS ==========
     function updateRemoveButtons() {
         const details = container.querySelectorAll('.detail-produk');
         details.forEach((detail, index) => {
             const removeBtn = detail.querySelector('.remove-detail');
-            if (details.length > 1 && index > 0) {
-                removeBtn.style.display = 'inline-block';
-            } else {
-                removeBtn.style.display = 'none';
+            if (removeBtn) {
+                if (details.length > 1 && index > 0) {
+                    removeBtn.style.display = 'inline-block';
+                } else {
+                    removeBtn.style.display = 'none';
+                }
             }
         });
     }
     
-    // Tombol Tambah Produk
-    addButton.addEventListener('click', function() {
-        // Buat elemen baru dari template
+    // ========== TAMBAH PRODUK ==========
+    addButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const newDetail = document.createElement('div');
         newDetail.innerHTML = getNewDetailTemplate().trim();
         const newRow = newDetail.firstElementChild;
         
-        // Reset nilai input
         newRow.querySelectorAll('input').forEach(el => {
             el.value = '';
         });
-        
-        // Reset dropdown ke opsi pertama (Pilih Produk)
         newRow.querySelectorAll('select').forEach(el => {
             el.selectedIndex = 0;
         });
         
-        // Tambahkan ke container
         container.appendChild(newRow);
-        
-        // Inisialisasi Select2 untuk elemen baru
         initSelect2(newRow);
-        
-        // Update tombol hapus
         updateRemoveButtons();
     });
     
-    // Hapus detail produk
+    // ========== HAPUS PRODUK ==========
     container.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-detail')) {
-            const detail = e.target.closest('.detail-produk');
-            if (container.children.length > 1) {
-                // Hapus Select2 instance sebelum remove
-                $(detail).find('.select2').each(function() {
-                    $(this).select2('destroy');
-                });
-                detail.remove();
-                updateRemoveButtons();
-            } else {
+        const btn = e.target.closest('.remove-detail');
+        if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const detail = btn.closest('.detail-produk');
+            if (!detail) return;
+            
+            const totalDetails = container.querySelectorAll('.detail-produk').length;
+            if (totalDetails <= 1) {
                 alert('Minimal harus ada 1 produk!');
+                return;
             }
+            
+            if (!confirm('Yakin ingin menghapus produk ini?')) {
+                return;
+            }
+            
+            $(detail).find('.select2').each(function() {
+                try {
+                    $(this).select2('destroy');
+                } catch(e) {
+                    // ignore
+                }
+            });
+            
+            detail.remove();
+            updateRemoveButtons();
         }
     });
     
-    // Inisialisasi Select2 untuk elemen yang sudah ada
+    // ========== INISIALISASI ==========
     initSelect2(container);
-    
-    // Initial update tombol hapus
     updateRemoveButtons();
 });
 </script>
