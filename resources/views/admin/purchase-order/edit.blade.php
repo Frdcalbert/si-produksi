@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (!btnUpdate) return;
     
+    // ========== TEMPLATE ==========
     function getNewDetailTemplate() {
         return `
             <div class="row g-2 mb-2 detail-produk align-items-end">
@@ -182,31 +183,40 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
     
+    // ========== SELECT2 INIT ==========
     function initSelect2(element) {
         $(element).find('.select2').each(function() {
             var placeholder = $(this).data('placeholder') || 'Pilih...';
-            $(this).select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: placeholder,
-                allowClear: true,
-                dropdownParent: $('body')
-            });
-        });
-    }
-    
-    function updateRemoveButtons() {
-        const details = container.querySelectorAll('.detail-produk');
-        details.forEach((detail, index) => {
-            const removeBtn = detail.querySelector('.remove-detail');
-            if (details.length > 1 && index > 0) {
-                removeBtn.style.display = 'inline-block';
-            } else {
-                removeBtn.style.display = 'none';
+            try {
+                $(this).select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: placeholder,
+                    allowClear: true,
+                    dropdownParent: $('body')
+                });
+            } catch(e) {
+                // ignore
             }
         });
     }
     
+    // ========== UPDATE TOMBOL HAPUS ==========
+    function updateRemoveButtons() {
+        const details = container.querySelectorAll('.detail-produk');
+        details.forEach((detail, index) => {
+            const removeBtn = detail.querySelector('.remove-detail');
+            if (removeBtn) {
+                if (details.length > 1) {
+                    removeBtn.style.display = 'inline-block';
+                } else {
+                    removeBtn.style.display = 'none';
+                }
+            }
+        });
+    }
+    
+    // ========== TAMBAH PRODUK ==========
     if (addButton) {
         addButton.addEventListener('click', function(e) {
             e.preventDefault();
@@ -229,33 +239,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // ========== HAPUS PRODUK ==========
     container.addEventListener('click', function(e) {
         const btn = e.target.closest('.remove-detail');
         if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const detail = btn.closest('.detail-produk');
-            if (container.children.length > 1) {
-                $(detail).find('.select2').each(function() {
-                    $(this).select2('destroy');
-                });
-                detail.remove();
-                updateRemoveButtons();
-            } else {
+            if (!detail) return;
+            
+            const totalDetails = container.querySelectorAll('.detail-produk').length;
+            if (totalDetails <= 1) {
                 alert('Minimal harus ada 1 produk!');
+                return;
             }
+            
+            if (!confirm('Yakin ingin menghapus produk ini dari PO?')) {
+                return;
+            }
+            
+            // Hapus Select2 instance
+            $(detail).find('.select2').each(function() {
+                try {
+                    $(this).select2('destroy');
+                } catch(e) {
+                    // ignore
+                }
+            });
+            
+            detail.remove();
+            updateRemoveButtons();
         }
     });
     
+    // ========== UPDATE BUTTON ==========
     btnUpdate.addEventListener('click', function(e) {
         $('.select2').each(function() {
-            $(this).select2('destroy');
+            try {
+                $(this).select2('destroy');
+            } catch(e) {
+                // ignore
+            }
         });
         form.submit();
     });
     
-    form.addEventListener('submit', function(e) {
-        console.log('Form submitted');
-    });
-    
+    // ========== INISIALISASI ==========
     initSelect2(container);
     updateRemoveButtons();
 });
