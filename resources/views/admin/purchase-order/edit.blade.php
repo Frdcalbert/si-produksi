@@ -112,7 +112,7 @@
                                     <input type="hidden" name="detail_id[]" value="{{ $detail->id }}">
                                 </td>
                                 <td>
-                                    <select class="form-select" name="produk_id[]" required>
+                                    <select class="form-select select2" name="produk_id[]" required>
                                         @foreach($produks as $produk)
                                             <option value="{{ $produk->id }}" {{ $detail->produk_id == $produk->id ? 'selected' : '' }}>
                                                 {{ $produk->kode_produk }} - {{ $produk->nama_produk }}
