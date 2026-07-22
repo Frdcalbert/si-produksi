@@ -91,6 +91,9 @@
             <div id="detailProdukContainer">
                 @foreach($purchaseOrder->detailPo as $key => $detail)
                     <div class="row g-2 mb-2 detail-produk align-items-end">
+                        {{-- ✅ HIDDEN INPUT UNTUK ID DETAIL --}}
+                        <input type="hidden" name="detail_id[]" value="{{ $detail->id }}">
+                        
                         <div class="col-md-5">
                             <label class="form-label">Produk <span class="text-danger">*</span></label>
                             <select class="form-select select2 produk-select" name="produk_id[]" required>
@@ -161,6 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function getNewDetailTemplate() {
         return `
             <div class="row g-2 mb-2 detail-produk align-items-end">
+                {{-- HIDDEN INPUT KOSONG UNTUK DETAIL BARU --}}
+                <input type="hidden" name="detail_id[]" value="">
                 <div class="col-md-5">
                     <label class="form-label">Produk <span class="text-danger">*</span></label>
                     <select class="form-select select2 produk-select" name="produk_id[]" required>
@@ -259,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // ✅ PERBAIKAN: Tombol Update
+    // Tombol Update
     btnUpdate.addEventListener('click', function(e) {
         // Hapus Select2 instance sebelum submit agar tidak mengganggu
         $('.select2').each(function() {
@@ -270,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         form.submit();
     });
     
-    // ✅ PERBAIKAN: Submit form normal kalau pakai Enter
+    // Submit form normal kalau pakai Enter
     form.addEventListener('submit', function(e) {
         // Biarkan submit normal
         console.log('Form submitted');

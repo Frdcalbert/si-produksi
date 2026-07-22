@@ -94,23 +94,66 @@ class PurchaseOrderController extends Controller
     }
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
-    {
-        $request->validate([
-            'project_id' => 'required|exists:project,id',
-            'supplier_id' => 'required|exists:supplier,id',
-            'no_po' => 'required|unique:purchase_order,no_po,' . $purchaseOrder->id,
-            'tanggal_po' => 'required|date',
-            'deadline_po' => 'required|date|after:tanggal_po',
-        ]);
+{
+    $request->validate([
+        'project_id' => 'required|exists:project,id',
+        'supplier_id' => 'required|exists:supplier,id',
+        'no_po' => 'required|unique:purchase_order,no_po,' . $purchaseOrder->id,
+        'tanggal_po' => 'required|date',
+        'deadline_po' => 'required|date|after:tanggal_po',
+        // ✅ Tambah validasi untuk detail produk
+        'produk_id' => 'required|array|min:1',
+        'produk_id.*' => 'exists:produk,id',
+        'qty_po' => 'required|array|min:1',
+        'qty_po.*' => 'integer|min:1'
+    ]);
 
-        if ($purchaseOrder->status_po === 'Selesai') {
-            return back()->with('error', 'PO yang sudah selesai tidak dapat diubah');
-        }
-
-        $purchaseOrder->update($request->only(['project_id', 'supplier_id', 'no_po', 'tanggal_po', 'deadline_po', 'catatan']));
-
-        return redirect()->route('admin.purchase-order.index')->with('success', 'Purchase Order berhasil diupdate');
+    if ($purchaseOrder->status_po === 'Selesai') {
+        return back()->with('error', 'PO yang sudah selesai tidak dapat diubah');
     }
+
+    // ✅ Update header PO
+    $purchaseOrder->update($request->only(['project_id', 'supplier_id', 'no_po', 'tanggal_po', 'deadline_po', 'catatan']));
+
+    // ✅ Update detail PO
+    // Ambil semua ID detail yang ada di form
+    $existingDetailIds = $purchaseOrder->detailPo->pluck('id')->toArray();
+    $submittedIds = $request->input('detail_id', []);
+
+    // Hapus detail yang tidak ada di form
+    $toDelete = array_diff($existingDetailIds, $submittedIds);
+    if (!empty($toDelete)) {
+        DetailPo::whereIn('id', $toDelete)->delete();
+    }
+
+    // Update atau tambah detail
+    foreach ($request->produk_id as $index => $produkId) {
+        $detailId = $request->detail_id[$index] ?? null;
+        $qtyPo = $request->qty_po[$index] ?? 0;
+
+        if ($detailId) {
+            // Update detail yang sudah ada
+            DetailPo::where('id', $detailId)->update([
+                'produk_id' => $produkId,
+                'qty_po' => $qtyPo
+            ]);
+        } else {
+            // Tambah detail baru
+            DetailPo::create([
+                'purchase_order_id' => $purchaseOrder->id,
+                'produk_id' => $produkId,
+                'qty_po' => $qtyPo,
+                'qty_selesai' => 0
+            ]);
+        }
+    }
+
+    // ✅ Update status PO
+    $this->updateStatusPo($purchaseOrder->id);
+
+    return redirect()->route('admin.purchase-order.index')
+        ->with('success', 'Purchase Order berhasil diupdate');
+}
 
     public function destroy(PurchaseOrder $purchaseOrder)
     {        
