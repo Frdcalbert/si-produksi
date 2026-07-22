@@ -15,7 +15,7 @@
             </div>
         @endif
 
-        <form action="{{ route('admin.purchase-order.update', $purchaseOrder->id) }}" method="POST">
+        <form action="{{ route('admin.purchase-order.update', $purchaseOrder->id) }}" method="POST" id="poForm">
             @csrf
             @method('PUT')
             
@@ -87,70 +87,32 @@
             <hr>
             <h5 class="mb-3"><i class="bi bi-box me-2"></i>Detail Produk</h5>
             
-            {{-- Tabel Detail PO --}}
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Kode Produk</th>
-                            <th>Nama Produk</th>
-                            <th>Qty PO</th>
-                            <th>Qty Selesai</th>
-                            @if($purchaseOrder->status_po != 'Selesai')
-                                <th>Aksi</th>
-                            @endif
-                        </tr>
-                    </thead>
-                    <tbody id="detailProdukBody">
-                        @foreach($purchaseOrder->detailPo as $key => $detail)
-                            <tr>
-                                <td>{{ $key + 1 }}</td>
-                                <td>
-                                    {{ $detail->produk->kode_produk ?? '-' }}
-                                    {{-- ✅ HIDDEN INPUT UNTUK ID DETAIL --}}
-                                    <input type="hidden" name="detail_id[]" value="{{ $detail->id }}">
-                                </td>
-                                <td>
-                                    <select class="form-select select2" name="produk_id[]" required>
-                                        @foreach($produks as $produk)
-                                            <option value="{{ $produk->id }}" {{ $detail->produk_id == $produk->id ? 'selected' : '' }}>
-                                                {{ $produk->kode_produk }} - {{ $produk->nama_produk }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control" name="qty_po[]" value="{{ $detail->qty_po }}" min="1" required>
-                                </td>
-                                <td>{{ $detail->qty_selesai }}</td>
-                                @if($purchaseOrder->status_po != 'Selesai')
-                                    <td>
-                                        <div class="d-flex gap-1">
-                                            {{-- Tombol Edit Detail --}}
-                                            <button type="button" class="btn btn-warning btn-sm" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#editDetailModal{{ $detail->id }}">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            
-                                            {{-- Tombol Hapus Detail --}}
-                                            <form action="{{ route('admin.purchase-order.destroy-detail', [$purchaseOrder->id, $detail->id]) }}" 
-                                                  method="POST" class="d-inline"
-                                                  onsubmit="return confirm('Yakin ingin menghapus detail ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-danger btn-sm">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            {{-- Container Detail Produk --}}
+            <div id="detailProdukContainer">
+                @foreach($purchaseOrder->detailPo as $key => $detail)
+                    <div class="row g-2 mb-2 detail-produk align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Produk <span class="text-danger">*</span></label>
+                            <select class="form-select select2 produk-select" name="produk_id[]" required>
+                                <option value="">Pilih Produk</option>
+                                @foreach($produks as $produk)
+                                    <option value="{{ $produk->id }}" {{ $detail->produk_id == $produk->id ? 'selected' : '' }}>
+                                        {{ $produk->kode_produk }} - {{ $produk->nama_produk }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Qty PO <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control qty-po" name="qty_po[]" min="1" value="{{ $detail->qty_po }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-danger remove-detail" {{ $loop->first ? 'style="display:none;"' : '' }}>
+                                <i class="bi bi-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
             </div>
 
             {{-- Tombol Tambah Produk --}}
@@ -160,92 +122,28 @@
                         <i class="bi bi-plus-circle"></i> Tambah Produk
                     </button>
                 </div>
-                
-                {{-- Container untuk detail baru --}}
-                <div id="detailProdukContainer" class="mt-3"></div>
-                
-                {{-- TEMPLATE UNTUK PRODUK BARU (Tersembunyi) --}}
-                <div id="templateProduk" style="display:none;">
-                    <div class="row g-2 mb-2 detail-produk align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label">Produk <span class="text-danger">*</span></label>
-                            <select class="form-select select2" name="produk_id[]" required>
-                                <option value="">Pilih Produk</option>
-                                @foreach($produks as $produk)
-                                    <option value="{{ $produk->id }}">{{ $produk->kode_produk }} - {{ $produk->nama_produk }}</option>
-                                @endforeach
-                            </select>
-                            {{-- ✅ HIDDEN INPUT KOSONG UNTUK PRODUK BARU --}}
-                            <input type="hidden" name="detail_id[]" value="">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Qty PO <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="qty_po[]" min="1" placeholder="Jumlah" required>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="button" class="btn btn-danger remove-detail">
-                                <i class="bi bi-trash"></i> Hapus
-                            </button>
-                        </div>
-                    </div>
-                </div>
             @endif
 
             <hr>
             @if($purchaseOrder->status_po != 'Selesai')
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Update PO</button>
-                    <a href="{{ route('admin.purchase-order.show', $purchaseOrder->id) }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+                    <button type="submit" class="btn btn-warning" id="btnUpdate">
+                        <i class="bi bi-save"></i> Update PO
+                    </button>
+                    <a href="{{ route('admin.purchase-order.show', $purchaseOrder->id) }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Kembali
+                    </a>
                 </div>
             @else
                 <div class="d-flex gap-2">
-                    <a href="{{ route('admin.purchase-order.show', $purchaseOrder->id) }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali ke Detail</a>
+                    <a href="{{ route('admin.purchase-order.show', $purchaseOrder->id) }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Detail
+                    </a>
                 </div>
             @endif
         </form>
     </div>
 </div>
-
-{{-- Modal Edit Detail PO --}}
-@foreach($purchaseOrder->detailPo as $detail)
-    <div class="modal fade" id="editDetailModal{{ $detail->id }}" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form action="{{ route('admin.purchase-order.update-detail', [$purchaseOrder->id, $detail->id]) }}" method="POST">
-                    @csrf
-                    @method('PUT')
-                    <div class="modal-header">
-                        <h5 class="modal-title">Edit Detail Produk</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="produk_id_{{ $detail->id }}" class="form-label">Produk <span class="text-danger">*</span></label>
-                            <select class="form-select select2" name="produk_id" id="produk_id_{{ $detail->id }}" required>
-                                <option value="">Pilih Produk</option>
-                                @foreach($produks as $produk)
-                                    <option value="{{ $produk->id }}" {{ $detail->produk_id == $produk->id ? 'selected' : '' }}>
-                                        {{ $produk->kode_produk }} - {{ $produk->nama_produk }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="qty_po_{{ $detail->id }}" class="form-label">Qty PO <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="qty_po" id="qty_po_{{ $detail->id }}" 
-                                   value="{{ $detail->qty_po }}" min="1" required>
-                            <small class="text-muted">Qty PO tidak boleh kurang dari qty selesai ({{ $detail->qty_selesai }})</small>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-@endforeach
 @endsection
 
 @push('scripts')
@@ -253,74 +151,135 @@
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('detailProdukContainer');
     const addButton = document.getElementById('addDetailProduk');
-    const template = document.getElementById('templateProduk');
+    const form = document.getElementById('poForm');
+    const btnUpdate = document.getElementById('btnUpdate');
     
-    if (addButton && template) {
-        addButton.addEventListener('click', function() {
-            // Clone template
-            const newDetail = template.cloneNode(true);
-            newDetail.style.display = 'block';
-            newDetail.id = '';  // Hapus id agar tidak duplikat
-            
-            // Reset nilai input
-            newDetail.querySelectorAll('input, select').forEach(function(el) {
-                if (el.tagName === 'SELECT') {
-                    el.selectedIndex = 0;
-                } else if (el.type === 'number') {
-                    el.value = '';
-                } else if (el.type === 'hidden') {
-                    el.value = '';  // Reset hidden input
-                } else {
-                    el.value = '';
-                }
-            });
-            
-            // Tampilkan tombol hapus
-            const removeBtn = newDetail.querySelector('.remove-detail');
-            if (removeBtn) removeBtn.style.display = 'inline-block';
-            
-            // Tambahkan ke container
-            container.appendChild(newDetail);
-            
-            // Inisialisasi Select2 untuk baris baru
-            $(newDetail).find('.select2').select2({
+    // Jika tidak ada tombol update (PO selesai), exit
+    if (!btnUpdate) return;
+    
+    // Fungsi untuk mendapatkan template detail produk baru (KOSONG)
+    function getNewDetailTemplate() {
+        return `
+            <div class="row g-2 mb-2 detail-produk align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Produk <span class="text-danger">*</span></label>
+                    <select class="form-select select2 produk-select" name="produk_id[]" required>
+                        <option value="">Pilih Produk</option>
+                        @foreach($produks as $produk)
+                            <option value="{{ $produk->id }}">{{ $produk->kode_produk }} - {{ $produk->nama_produk }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Qty PO <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control qty-po" name="qty_po[]" min="1" placeholder="Jumlah" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-danger remove-detail">
+                        <i class="bi bi-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Fungsi untuk menginisialisasi Select2 di elemen baru
+    function initSelect2(element) {
+        $(element).find('.select2').each(function() {
+            var placeholder = $(this).data('placeholder') || 'Pilih...';
+            $(this).select2({
                 theme: 'bootstrap-5',
                 width: '100%',
-                placeholder: 'Cari produk...',
+                placeholder: placeholder,
                 allowClear: true,
                 dropdownParent: $('body')
             });
+        });
+    }
+    
+    // Fungsi update tombol hapus
+    function updateRemoveButtons() {
+        const details = container.querySelectorAll('.detail-produk');
+        details.forEach((detail, index) => {
+            const removeBtn = detail.querySelector('.remove-detail');
+            if (details.length > 1 && index > 0) {
+                removeBtn.style.display = 'inline-block';
+            } else {
+                removeBtn.style.display = 'none';
+            }
+        });
+    }
+    
+    // Tombol Tambah Produk (jika ada)
+    if (addButton) {
+        addButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
+            // Buat elemen baru dari template
+            const newDetail = document.createElement('div');
+            newDetail.innerHTML = getNewDetailTemplate().trim();
+            const newRow = newDetail.firstElementChild;
+            
+            // Reset nilai input
+            newRow.querySelectorAll('input').forEach(el => {
+                el.value = '';
+            });
+            
+            // Reset dropdown ke opsi pertama (Pilih Produk)
+            newRow.querySelectorAll('select').forEach(el => {
+                el.selectedIndex = 0;
+            });
+            
+            // Tambahkan ke container
+            container.appendChild(newRow);
+            
+            // Inisialisasi Select2 untuk elemen baru
+            initSelect2(newRow);
+            
+            // Update tombol hapus
             updateRemoveButtons();
         });
     }
     
-    // Event delegation untuk hapus detail (termasuk yang sudah ada)
+    // Hapus detail produk
     container.addEventListener('click', function(e) {
         if (e.target.closest('.remove-detail')) {
             const detail = e.target.closest('.detail-produk');
-            if (detail) {
+            if (container.children.length > 1) {
+                // Hapus Select2 instance sebelum remove
+                $(detail).find('.select2').each(function() {
+                    $(this).select2('destroy');
+                });
                 detail.remove();
                 updateRemoveButtons();
+            } else {
+                alert('Minimal harus ada 1 produk!');
             }
         }
     });
     
-    function updateRemoveButtons() {
-        const details = container.querySelectorAll('.detail-produk');
-        details.forEach(function(detail, index) {
-            const removeBtn = detail.querySelector('.remove-detail');
-            if (removeBtn) {
-                if (details.length > 1) {
-                    removeBtn.style.display = 'inline-block';
-                } else {
-                    removeBtn.style.display = 'none';
-                }
-            }
+    // ✅ PERBAIKAN: Tombol Update
+    btnUpdate.addEventListener('click', function(e) {
+        // Hapus Select2 instance sebelum submit agar tidak mengganggu
+        $('.select2').each(function() {
+            $(this).select2('destroy');
         });
-    }
+        
+        // Submit form
+        form.submit();
+    });
     
-    // Inisialisasi tombol hapus
+    // ✅ PERBAIKAN: Submit form normal kalau pakai Enter
+    form.addEventListener('submit', function(e) {
+        // Biarkan submit normal
+        console.log('Form submitted');
+    });
+    
+    // Inisialisasi Select2 untuk elemen yang sudah ada
+    initSelect2(container);
+    
+    // Initial update tombol hapus
     updateRemoveButtons();
 });
 </script>
