@@ -34,7 +34,7 @@
                 <div class="col-md-4">
                     <label for="supplier_id" class="form-label">Supplier <span class="text-danger">*</span></label>
                     <select class="form-select select2 @error('supplier_id') is-invalid @enderror" 
-                            id="supplier_id" name="supplier_id" placeholder="Pilih Supplier" required>
+                            id="supplier_id" name="supplier_id" required>
                         <option value="">Pilih Supplier</option>
                         @foreach($suppliers as $supplier)
                             <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
@@ -67,7 +67,9 @@
             <hr>
             <h5 class="mb-3"><i class="bi bi-box me-2"></i>Detail Produk</h5>
             
+            {{-- Container Detail Produk --}}
             <div id="detailProdukContainer">
+                {{-- Baris pertama (default) --}}
                 <div class="row g-2 mb-2 detail-produk align-items-end">
                     <div class="col-md-5">
                         <label class="form-label">Produk <span class="text-danger">*</span></label>
@@ -90,6 +92,7 @@
                 </div>
             </div>
 
+            {{-- Tombol Tambah Produk --}}
             <div class="mt-2">
                 <button type="button" class="btn btn-success" id="addDetailProduk">
                     <i class="bi bi-plus-circle"></i> Tambah Produk
@@ -112,43 +115,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('detailProdukContainer');
     const addButton = document.getElementById('addDetailProduk');
     
-    addButton.addEventListener('click', function() {
-        const firstDetail = container.querySelector('.detail-produk');
-        const newDetail = firstDetail.cloneNode(true);
-        
-        // ✅ RESET NILAI
-        newDetail.querySelectorAll('input, select').forEach(function(el) {
-            if (el.tagName === 'SELECT') {
-                el.selectedIndex = 0;
-            } else if (el.type === 'number') {
-                el.value = '';
-            } else {
-                el.value = '';
-            }
+    // Fungsi untuk mendapatkan template detail produk baru (KOSONG)
+    function getNewDetailTemplate() {
+        return `
+            <div class="row g-2 mb-2 detail-produk align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Produk <span class="text-danger">*</span></label>
+                    <select class="form-select select2 produk-select" name="produk_id[]" required>
+                        <option value="">Pilih Produk</option>
+                        @foreach($produks as $produk)
+                            <option value="{{ $produk->id }}">{{ $produk->kode_produk }} - {{ $produk->nama_produk }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Qty PO <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control qty-po" name="qty_po[]" min="1" placeholder="Jumlah" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-danger remove-detail">
+                        <i class="bi bi-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Fungsi untuk menginisialisasi Select2 di elemen baru
+    function initSelect2(element) {
+        $(element).find('.select2').each(function() {
+            var placeholder = $(this).data('placeholder') || 'Pilih...';
+            $(this).select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: placeholder,
+                allowClear: true,
+                dropdownParent: $('body')
+            });
         });
-        
-        const removeBtn = newDetail.querySelector('.remove-detail');
-        removeBtn.style.display = 'inline-block';
-        
-        container.appendChild(newDetail);
-        updateRemoveButtons();
-    });
+    }
     
-    container.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-detail')) {
-            const detail = e.target.closest('.detail-produk');
-            if (container.children.length > 1) {
-                detail.remove();
-                updateRemoveButtons();
-            } else {
-                alert('Minimal harus ada 1 produk!');
-            }
-        }
-    });
-    
+    // Fungsi update tombol hapus
     function updateRemoveButtons() {
         const details = container.querySelectorAll('.detail-produk');
-        details.forEach(function(detail, index) {
+        details.forEach((detail, index) => {
             const removeBtn = detail.querySelector('.remove-detail');
             if (details.length > 1 && index > 0) {
                 removeBtn.style.display = 'inline-block';
@@ -158,6 +168,54 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Tombol Tambah Produk
+    addButton.addEventListener('click', function() {
+        // Buat elemen baru dari template
+        const newDetail = document.createElement('div');
+        newDetail.innerHTML = getNewDetailTemplate().trim();
+        const newRow = newDetail.firstElementChild;
+        
+        // Reset nilai input
+        newRow.querySelectorAll('input').forEach(el => {
+            el.value = '';
+        });
+        
+        // Reset dropdown ke opsi pertama (Pilih Produk)
+        newRow.querySelectorAll('select').forEach(el => {
+            el.selectedIndex = 0;
+        });
+        
+        // Tambahkan ke container
+        container.appendChild(newRow);
+        
+        // Inisialisasi Select2 untuk elemen baru
+        initSelect2(newRow);
+        
+        // Update tombol hapus
+        updateRemoveButtons();
+    });
+    
+    // Hapus detail produk
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-detail')) {
+            const detail = e.target.closest('.detail-produk');
+            if (container.children.length > 1) {
+                // Hapus Select2 instance sebelum remove
+                $(detail).find('.select2').each(function() {
+                    $(this).select2('destroy');
+                });
+                detail.remove();
+                updateRemoveButtons();
+            } else {
+                alert('Minimal harus ada 1 produk!');
+            }
+        }
+    });
+    
+    // Inisialisasi Select2 untuk elemen yang sudah ada
+    initSelect2(container);
+    
+    // Initial update tombol hapus
     updateRemoveButtons();
 });
 </script>
